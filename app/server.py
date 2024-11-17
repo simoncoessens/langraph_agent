@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 # Compile the graph
 graph = graph_builder.compile()
 
-config = {"configurable": {"thread_id": 1}}
+config = {"configurable": {"thread_id": 2}}
 
 # Initialize FastAPI app
 app = FastAPI()
