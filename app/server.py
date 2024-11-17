@@ -6,10 +6,15 @@ from langgraph.graph import MessagesState, StateGraph, START, END
 # Import your custom classes and functions
 from app.node import Q1_SubquestionAnswers, process_response, check_completion, inform_user, GraphState, graph_builder  
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage 
+from dotenv import load_dotenv
+from langgraph.checkpoint.memory import MemorySaver
 
+load_dotenv()
 
 # Compile the graph
-graph = graph_builder.compile()
+graph = graph_builder.compile(checkpointer=MemorySaver())
+
+
 
 config = {"configurable": {"thread_id": 2}}
 
@@ -27,6 +32,7 @@ async def process_input(data: UserInput):
     
     # Run the graph logic
     state = graph.invoke({"messages": [HumanMessage(data.response)]}, config=config)
+    print(state["messages"])
 
 
     # Return the response as JSON
