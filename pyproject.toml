@@ -19,6 +19,7 @@ langgraph = "0.2.50"
 langgraph-checkpoint = "2.0.4"
 langgraph-sdk = "0.1.36"
 python-decouple = "^3.8"
+pinecone-client = "5.0.1"
 
 [tool.poetry.group.dev.dependencies]
 langchain-cli = ">=0.0.15"

@@ -1,20 +1,22 @@
 FROM python:3.11-slim
 
-RUN pip install poetry==1.6.1
+#RUN pip install poetry==1.6.1
 
-RUN poetry config virtualenvs.create false
+#RUN poetry config virtualenvs.create false
 
 WORKDIR /code
 
-COPY ./pyproject.toml ./README.md ./poetry.lock* ./
+#COPY ./pyproject.toml ./README.md ./poetry.lock* ./
+COPY ./requirements.txt ./
+RUN pip install -r requirements.txt
 
 COPY ./package[s] ./packages
 
-RUN poetry install  --no-interaction --no-ansi --no-root
+#RUN poetry install  --no-interaction --no-ansi --no-root
 
 COPY ./app ./app
 
-RUN poetry install --no-interaction --no-ansi
+#RUN poetry install --no-interaction --no-ansi
 
 ARG PORT
 
