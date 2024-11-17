@@ -11,6 +11,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 # Compile the graph
 graph = graph_builder.compile()
 
+config = {"configurable": {"thread_id": 1}}
+
 # Initialize FastAPI app
 app = FastAPI()
 
@@ -22,7 +24,6 @@ class UserInput(BaseModel):
 @app.post("/process")
 async def process_input(data: UserInput):
     # Create an initial graph state with the user's input
-    config = {"configurable": {"thread_id": 1}}
     
     # Run the graph logic
     state = graph.invoke({"messages": [HumanMessage(data.response)]}, config=config)
