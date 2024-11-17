@@ -186,17 +186,21 @@ def inform_user(state: GraphState) -> str:
         f"{vague_str}\n\n"
         "Please provide more details to clarify these aspects."
     )
-    question = state["messages"][-1].content
+    user_anwser = state["messages"][-1].content
     general_template = """
 You are Anna, the AI assistant here to guide users in answering the **Main Question**: {question}. Your role is to provide clear, supportive assistance while keeping things conversational and concise.
 
-**Summary of Missing Details**: The following parts of your description are unclear:
+In the last message the user said: {user_answer}
+
+Now if the user is asking for clarification on a topic, read the AI act articles and explain based on that. Keep your response short, friendly, and focus on the user's question or the next steps they should take to complete the questionnaire accurately.
+If you reference AI articles, then reference them and put the article name in bold.
+
+If the user is explaining something about his system, confirm that you understand and ask him to give the missing details if needed.
+
+**Summary of Missing Details**: The following parts of the user's description are unclear:
 {suggestion}
 
 Please encourage the user to clarify these aspects so they can progress smoothly with the questionnaire. 
-
-If the user has asked a general question, respond directly with relevant information from the **AI Act Articles** below. Keep your response short, friendly, and focus on the user's question or the next steps they should take to complete the questionnaire accurately.
-If you reference AI articles, then reference them and put the article name in bold.
 
 **Relevant AI Act Articles**: 
 {articles}
@@ -216,7 +220,7 @@ If you reference AI articles, then reference them and put the article name in bo
         },
     )
     chain = general_prompt | gpt
-    response = chain.invoke({"question": question, "suggestion": suggestion})
+    response = chain.invoke({"question": "Describe the AI system that will be target of this compliance analysis", "suggestion": suggestion, 'user_answer': user_anwser})
     return {"messages": response}
 
 
