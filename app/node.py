@@ -8,8 +8,41 @@ from pydantic import BaseModel, Field
 from langgraph.graph import MessagesState
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from decouple import config
+from pinecone import Pinecone
+import os
 
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+index = pc.Index("aiact")
+
+def fetch_context(article_ids):
+    all_fetched_texts = []
+
+    for article_id in article_ids:
+        # Try to fetch the article normally
+        result = index.fetch(ids=[article_id])
+
+        if article_id in result['vectors']:
+            # Article found
+            all_fetched_texts.append(f"{article_id}:\n{result['vectors'][article_id]['metadata']['text']}")
+        else:
+            # Article not found, try to fetch subsections
+            subsection_ids = [f"{article_id}.{i:03d}" for i in range(1, 100)]
+            result = index.fetch(ids=subsection_ids)
+
+            # Keep track of whether any subsections were found
+            subsections_found = False
+
+            # Process fetched subsections
+            for subsection_id in subsection_ids:
+                if subsection_id in result['vectors']:
+                    subsections_found = True
+                    all_fetched_texts.append(f"{subsection_id}:\n{result['vectors'][subsection_id]['metadata']['text']}")
+
+            if not subsections_found:
+                # No subsections found, print a message to the terminal
+                print(f"No article found for ID: {article_id}")
+
+    return "\n\n".join(all_fetched_texts)
 
 
 class Q1_SubquestionAnswers(BaseModel):
@@ -60,8 +93,7 @@ User's response: {response}
 """.strip()
 
 prompt_template = PromptTemplate(input_variables=["response"], template=prompt)
-api_key = config("OPENAI_API_KEY")
-gpt = ChatOpenAI(model="gpt-4o", temperature=0, openai_api_key=api_key)
+gpt = ChatOpenAI(model="gpt-4o", temperature=0)
 llm_q1 = gpt.with_structured_output(Q1_SubquestionAnswers)
 q1_chain = prompt_template | llm_q1
 
@@ -95,6 +127,43 @@ def check_completion(state: GraphState) -> bool:
     return all_not_none
 
 
+# Define the function to process the user's response
+def process_response(state: GraphState) -> GraphState:
+    messages = state["messages"]
+    # user response is every even number message
+    user_response = ""
+    for i in range(0, len(messages), 2):
+        user_response += messages[i].content + "\n"
+    sub_answers_new = q1_chain.invoke({"response": user_response})
+    if "subquestion_answers" in state:
+        sub_answers_existing = state["subquestion_answers"]
+    else:
+        sub_answers_existing = Q1_SubquestionAnswers()
+    for attr in ["q1", "q2", "q3", "q4", "q5"]:
+        if not getattr(sub_answers_existing, attr):
+            setattr(sub_answers_existing, attr, getattr(sub_answers_new, attr))
+    return {"subquestion_answers": sub_answers_existing}
+
+
+# Define the function to process the user's response
+# def generate_explanations(state: GraphState) -> GraphState:
+#     messages = state["messages"]
+#     # user response is every even number message
+#     user_response = ""
+#     for i in range(0, len(messages), 2):
+#         user_response += messages[i].content + "\n"
+#     return {
+#         "explanations": generate_agent_explanations(user_response, explanation_chain)
+#     }
+
+
+# Define the function to check if all subquestions are answered
+def check_completion(state: GraphState) -> bool:
+    answers = state["subquestion_answers"]
+    all_not_none = all([answer is not None for answer in answers])
+    return all_not_none
+
+
 # Define the function to inform the user about vague parts
 def inform_user(state: GraphState) -> str:
     vague_parts = [
@@ -117,7 +186,38 @@ def inform_user(state: GraphState) -> str:
         f"{vague_str}\n\n"
         "Please provide more details to clarify these aspects."
     )
-    return {"messages": AIMessage(content=suggestion)}
+    question = state["messages"][-1].content
+    general_template = """
+You are Anna, the AI assistant here to guide users in answering the **Main Question**: {question}. Your role is to provide clear, supportive assistance while keeping things conversational and concise.
+
+**Summary of Missing Details**: The following parts of your description are unclear:
+{suggestion}
+
+Please encourage the user to clarify these aspects so they can progress smoothly with the questionnaire. 
+
+If the user has asked a general question, respond directly with relevant information from the **AI Act Articles** below. Keep your response short, friendly, and focus on the user's question or the next steps they should take to complete the questionnaire accurately.
+If you reference AI articles, then reference them and put the article name in bold.
+
+**Relevant AI Act Articles**: 
+{articles}
+""".strip()
+
+    general_prompt = PromptTemplate(
+        template=general_template,
+        partial_variables={
+            "articles": fetch_context(
+                article_ids=[
+                    "article_003",
+                    "recital_rct_12",
+                    "recital_rct_97",
+                    "recital_rct_100",
+                ]
+            )
+        },
+    )
+    chain = general_prompt | gpt
+    response = chain.invoke({"question": question, "suggestion": suggestion})
+    return {"messages": response}
 
 
 # Initialize the StateGraph
@@ -133,4 +233,4 @@ graph_builder.add_conditional_edges(
     "process_response", check_completion, {True: END, False: "inform_user"}
 )
 graph_builder.add_edge("inform_user", END)
-graph = graph_builder.compile()
+graph = graph_builder.compile(checkpointer=MemorySaver())
