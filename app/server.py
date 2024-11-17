@@ -32,7 +32,7 @@ async def process_input(data: UserInput):
     
     # Run the graph logic
     state = graph.invoke({"messages": [HumanMessage(data.response)]}, config=config)
-    if state['subquestion_answers'].all_not_none:
+    if state['subquestion_answers'].all_not_none():
         return {"response": [AIMessage("We can continue to the next part, Thank you for answering")]}
 
 
