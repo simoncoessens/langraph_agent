@@ -6,10 +6,10 @@ from langgraph.graph import MessagesState, StateGraph, START, END
 # Import your custom classes and functions
 from app.node import Q1_SubquestionAnswers, process_response, check_completion, inform_user, GraphState, graph_builder  
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage 
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 
-load_dotenv()
+#load_dotenv()
 
 # Compile the graph
 graph = graph_builder.compile(checkpointer=MemorySaver())
