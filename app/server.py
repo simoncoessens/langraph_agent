@@ -4,7 +4,7 @@ from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import MessagesState, StateGraph, START, END
 # Import your custom classes and functions
-from node import Q1_SubquestionAnswers, process_response, check_completion, inform_user, GraphState, graph_builder  
+from app.node import Q1_SubquestionAnswers, process_response, check_completion, inform_user, GraphState, graph_builder  
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage 
 
 
