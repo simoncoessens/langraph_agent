@@ -64,6 +64,9 @@ class Q1_SubquestionAnswers(BaseModel):
         None, description="Is the system designed with varying autonomy levels?"
     )
 
+    def all_not_none(self):
+        return all(attr is not None for attr in [self.q1, self.q2, self.q3, self.q4, self.q5])
+
     def all(self):
         return all([self.q1, self.q2, self.q3, self.q4, self.q5])
 
